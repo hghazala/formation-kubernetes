@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: formation-kube-deployment
+  #we should explicitly define the namespace, unless we want to deploy in the default namespace
+  namespace: formation
+  labels:
+    app: formation-kube
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: formation-kube
+  template:
+    metadata:
+      labels:
+        app: formation-kube
+    spec:
+      containers:
+        - name: formation-kube-container
+          image: formation-kube-image:latest
+          #kubelet will pull the image from the registry, and store it in the node
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
