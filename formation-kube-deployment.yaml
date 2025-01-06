@@ -20,6 +20,6 @@ spec:
         - name: formation-kube-container
           image: formation-kube-image:latest
           #kubelet will pull the image from the registry, and store it in the node
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
