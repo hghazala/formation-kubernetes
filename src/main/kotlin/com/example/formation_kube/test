@@ -1,0 +1,222 @@
+package com.stonal.documentstorage.infrastructure.repositories.document
+
+import com.stonal.documentstorage.factories.DEFAULT_ORGANIZATION_CODE
+import com.stonal.documentstorage.infrastructure.api.document.AuthorizationsSearchFilter
+import com.stonal.documentstorage.infrastructure.api.document.DocumentSearchFilter
+import com.stonal.documentstorage.infrastructure.jpa.repositories.document.DocumentQueryBuilder
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+
+class DocumentQueryBuilderTest {
+    @Test
+    fun `should build a query to select documents for given organization with documents`() {
+        val query = DocumentQueryBuilder.applyFilters(
+            DocumentSearchFilter(
+                organizationCode = DEFAULT_ORGANIZATION_CODE
+            ),
+        )
+
+        val expected = """
+            SELECT d.id                            as id,
+                   d.identifier                    as identifier,
+                   d.organization_code             as organizationCode,
+                   d.name                          as name,
+                   d.classification_status         as classificationStatus,
+                   dc.identifier                   as documentClassIdentifier,
+                   dc.code                         as documentClassCode,
+                   dc.description                  as documentClassDescription,
+                   dc.names                        as documentClassNames,
+                   pdc.identifier                  as predictedDocumentClassIdentifier,
+                   pdc.code                        as predictedDocumentClassCode,
+                   pdc.description                 as predictedDocumentClassDescription,
+                   pdc.names                       as predictedDocumentClassNames,
+                   d.confidence_index              as confidenceIndex,
+                   d.properties                    as properties,
+                   d.rented_units                  as rentedUnits,
+                   d.tenants                       as tenants,
+                   d.tags                          as tags,
+                   d.suggested_metadatas           as suggestedMetadata,
+                   d.metadata                      as metadata,
+                   d.s3_identifier                 as s3Identifier,
+                   d.content_type                  as contentType,
+                   d.hash_sha256                   as hash,
+                   d.creation_date                 as creationDate,
+                   d.update_date                   as updateDate,
+                   f.identifier                    as predictedFolderIdentifier,
+                   f.names                         as predictedFolderNames,
+                   f2.identifier                   as manuallyValidatedFolderIdentifier,
+                   f2.names                        as manuallyValidatedFolderNames,
+                   dr.referenced_entity_type       as referencedEntityType,
+                   dr.referenced_entity_identifier as referencedEntityIdentifier,
+                   f3.identifier                   as referenceFolderIdentifier,
+                   f3.names                        as referenceFolderNames,
+                   d2.identifier                   as referenceDocumentationIdentifier,
+                   t.name                          as tagName,
+                   t.color                         as tagColor
+            FROM documents d
+                     LEFT JOIN document_references dr ON dr.document = d.id
+                     LEFT JOIN folders f3 ON f3.id = dr.folder
+                     LEFT JOIN folders f ON f.id = d.predicted_folder_id
+                     LEFT JOIN folders f2 ON f2.id = d.manually_validated_folder_id
+                     LEFT JOIN documentations d2 ON d2.id = dr.documentation
+                     LEFT JOIN document_classes dc ON dc.id = d.document_class_id
+                     LEFT JOIN document_classes pdc ON pdc.id = d.predicted_document_class_id
+                     LEFT JOIN documents_tags dt ON dt.document_id = d.id
+                     LEFT JOIN tags t ON t.id = dt.tag_id
+            WHERE ((d.organization_code = :organizationCode))
+              AND ((d.deleted = :deleted))
+        """.trimIndent()
+        assertThat(query.sqlQuery()).isEqualTo(
+            expected
+                .replace(Regex("\\s+"), " ")
+                .replace("\n", "") + " "
+                .trimIndent()
+        )
+    }
+
+    @Test
+    fun `should build a query to select documents for given organization with documents and tags`() {
+        val query = DocumentQueryBuilder.applyFilters(
+            DocumentSearchFilter(
+                organizationCode = DEFAULT_ORGANIZATION_CODE,
+                tags = setOf("PHOTO")
+            ),
+        )
+
+        val expected = """
+            SELECT d.id                            as id,
+                   d.identifier                    as identifier,
+                   d.organization_code             as organizationCode,
+                   d.name                          as name,
+                   d.classification_status         as classificationStatus,
+                   dc.identifier                   as documentClassIdentifier,
+                   dc.code                         as documentClassCode,
+                   dc.description                  as documentClassDescription,
+                   dc.names                        as documentClassNames,
+                   pdc.identifier                  as predictedDocumentClassIdentifier,
+                   pdc.code                        as predictedDocumentClassCode,
+                   pdc.description                 as predictedDocumentClassDescription,
+                   pdc.names                       as predictedDocumentClassNames,
+                   d.confidence_index              as confidenceIndex,
+                   d.properties                    as properties,
+                   d.rented_units                  as rentedUnits,
+                   d.tenants                       as tenants,
+                   d.tags                          as tags,
+                   d.suggested_metadatas           as suggestedMetadata,
+                   d.metadata                      as metadata,
+                   d.s3_identifier                 as s3Identifier,
+                   d.content_type                  as contentType,
+                   d.hash_sha256                   as hash,
+                   d.creation_date                 as creationDate,
+                   d.update_date                   as updateDate,
+                   f.identifier                    as predictedFolderIdentifier,
+                   f.names                         as predictedFolderNames,
+                   f2.identifier                   as manuallyValidatedFolderIdentifier,
+                   f2.names                        as manuallyValidatedFolderNames,
+                   dr.referenced_entity_type       as referencedEntityType,
+                   dr.referenced_entity_identifier as referencedEntityIdentifier,
+                   f3.identifier                   as referenceFolderIdentifier,
+                   f3.names                        as referenceFolderNames,
+                   d2.identifier                   as referenceDocumentationIdentifier,
+                   t.name                          as tagName,
+                   t.color                         as tagColor
+            FROM documents d
+                     LEFT JOIN document_references dr ON dr.document = d.id
+                     LEFT JOIN folders f3 ON f3.id = dr.folder
+                     LEFT JOIN folders f ON f.id = d.predicted_folder_id
+                     LEFT JOIN folders f2 ON f2.id = d.manually_validated_folder_id
+                     LEFT JOIN documentations d2 ON d2.id = dr.documentation
+                     LEFT JOIN document_classes dc ON dc.id = d.document_class_id
+                     LEFT JOIN document_classes pdc ON pdc.id = d.predicted_document_class_id
+                     LEFT JOIN documents_tags dt ON dt.document_id = d.id
+                     LEFT JOIN tags t ON t.id = dt.tag_id
+            WHERE ((d.organization_code = :organizationCode))
+              AND ((t.name IN :tags))
+              AND ((d.deleted = :deleted))
+        """.trimIndent()
+
+        assertThat(query.sqlQuery()).isEqualTo(
+            expected
+                .replace(Regex("\\s+"), " ")
+                .replace("\n", "") + " "
+                .trimIndent()
+        )
+    }
+
+    @Test
+    fun `should build sql where`() {
+        val query = DocumentQueryBuilder.applyFilters(
+            DocumentSearchFilter(
+                organizationCode = DEFAULT_ORGANIZATION_CODE,
+            ),
+        )
+
+        val expected = """
+        WHERE ((d.organization_code = :organizationCode))
+            AND ((d.deleted = :deleted))
+        """.trimIndent()
+        assertThat(query.whereAsSQL()).isEqualTo(expected
+                .replace(Regex("\\s+"), " ")
+                .replace("\n", "") + " "
+                .trimIndent()
+        )
+    }
+
+    @Test
+    fun `should build sql where with ands`() {
+        val query = DocumentQueryBuilder.applyFilters(
+            DocumentSearchFilter(
+                organizationCode = DEFAULT_ORGANIZATION_CODE,
+                documentStatus = "ACTION_REQUIRED",
+            ),
+        )
+
+        val expected = """
+        WHERE ((d.organization_code = :organizationCode))
+        AND (((d.classification_status IN :classificationStatus)
+        AND ((dr.folder IS NULL))
+        AND ((d.manually_validated_folder_id IS NULL))))
+        AND ((d.deleted = :deleted))
+        """.trimIndent()
+        assertThat(query.whereAsSQL()).isEqualTo(expected
+                .replace(Regex("\\s+"), " ")
+                .replace("\n", "") + " "
+                .trimIndent()
+        )
+    }
+
+    @Test
+    fun `should build ands and ors`() {
+        val query = DocumentQueryBuilder.applyFilters(
+            DocumentSearchFilter(
+                organizationCode = DEFAULT_ORGANIZATION_CODE,
+                name = "test",
+                documentStatus = "ACTION_REQUIRED",
+                authorizations = AuthorizationsSearchFilter(
+                    authorizationGroupIdentifiers = setOf("GROUP1"),
+                    isSuperAdmin = false,
+                    hasDocumentAllAccess = false,
+                    authorityOnAssets = setOf("A1"),
+                )
+            ),
+        )
+
+        val expected = """
+        WHERE (((dr.referenced_entity_identifier IN :referencedEntityIdentifier) AND ((dr.documentation IS NULL)
+            OR ((dr.folder IS NULL))))
+            OR (((d2.authorizationgroups && :authorizationgroups)
+        AND ((f3.authorizationgroups && :authorizationgroups)))))
+        AND ((d.organization_code = :organizationCode))
+        AND ((lower(d.name) LIKE :documentname))
+        AND (((d.classification_status IN :classificationStatus)
+        AND ((dr.folder IS NULL))
+        AND ((d.manually_validated_folder_id IS NULL))))
+        AND ((d.deleted = :deleted))
+        """.trimIndent()
+        assertThat(query.whereAsSQL()).isEqualTo(expected
+                .replace(Regex("\\s+"), " ")
+                .replace("\n", "") + " "
+                .trimIndent()
+        )
+    }
+}
